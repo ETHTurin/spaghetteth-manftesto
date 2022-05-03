@@ -1,69 +1,316 @@
-import Head from 'next/head'
-import Image from 'next/image'
-import styles from '../styles/Home.module.css'
+import Head from "next/head";
+import Image from "next/image";
+import { useState, useEffect } from "react";
 
-export default function Home() {
+import { ethers } from "ethers";
+
+import {
+  articletokenAddress,
+  manftestotokenAddress,
+} from "../contractsAddresses.js";
+import { abi as articletokenAbi } from "../artifacts/contracts/ArticleNFTs.sol/ArticleNFTs.json";
+import { abi as manftestotokenAbi } from "../artifacts/contracts/ManNFTesto.sol/MaNFTesto.json";
+import { web3Modal } from "../web3modal.config";
+import Article from "../components/Article";
+import Button from "../components/Button";
+
+import IPFSUtils from "../utils/ipfs";
+
+function Home(props) {
+  const [articles, setArticles] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const manifestoId = 0;
+
+  const [articleText, setArticleText] = useState("");
+  const [walletAddr, setWalletAddr] = useState();
+
+  let provider;
+
+  const loadContent = async () => {
+    if (!window.ethereum) return;
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+
+    const signer = await provider.getSigner();
+    const signerAddr = await signer.getAddress();
+
+    setWalletAddr(signerAddr);
+
+    setIsLoading(true);
+    const articleTokenContract = new ethers.Contract(
+      articletokenAddress,
+      articletokenAbi,
+      provider
+    );
+    const manftestoTokenContract = new ethers.Contract(
+      manftestotokenAddress,
+      manftestotokenAbi,
+      provider
+    );
+
+    const articleAPI = await manftestoTokenContract.getManifesto(manifestoId);
+    const articleInfo = [];
+
+    let articleIndex = 0;
+    for (const article of articleAPI) {
+      let uri = await articleTokenContract.tokenURI(article.tokenId);
+      const author = await articleTokenContract.ownerOf(article.tokenId);
+
+      const content = await (
+        await fetch(`https://ipfs.tapoon.house/ipfs/${uri}`)
+      ).json();
+
+      articleInfo.push({
+        manifestoId,
+        index: articleIndex,
+        content: content.name,
+        author,
+        articleInfo: {
+          score: article.score.toNumber(),
+          tokenId: article.tokenId.toString(),
+          tokenAddress: article.tokenAddress.toString(),
+        },
+      });
+
+      articleIndex++;
+    }
+
+    articleInfo.sort((a, b) => {
+      if (a.articleInfo.score > b.articleInfo.score) {
+        return -1;
+      }
+
+      if (a.articleInfo.score < b.articleInfo.score) {
+        return 1;
+      }
+
+      return 0;
+    });
+
+    setArticles(articleInfo);
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    (async () => {
+      loadContent();
+    })();
+  }, []);
+
+  async function connectWallet() {
+    const instance = await web3Modal.connect();
+
+    provider = new ethers.providers.Web3Provider(instance);
+    const signer = provider.getSigner();
+  }
+
+  async function mintArticle() {
+    if (!window.ethereum) return;
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+
+    const signer = await provider.getSigner();
+    const signerAddress = await signer.getAddress();
+
+    const articleTokenContract = new ethers.Contract(
+      articletokenAddress,
+      articletokenAbi,
+      signer
+    );
+    const manftestoTokenContract = new ethers.Contract(
+      manftestotokenAddress,
+      manftestotokenAbi,
+      signer
+    );
+
+    const cid = await IPFSUtils.upload(
+      Buffer.from(JSON.stringify({ name: articleText }), "utf8")
+    );
+
+    const mintArticleTx = await articleTokenContract.mintArticle(
+      signerAddress,
+      cid
+    );
+
+    const mintArticleTxRes = await mintArticleTx.wait();
+
+    //this is the array of the give n back values
+    let event = mintArticleTxRes.events[0];
+    let value = event.args[2];
+    let tokenId = value.toNumber();
+
+    const addArticleTx = await manftestoTokenContract.addArticle(
+      manifestoId,
+      articletokenAddress,
+      tokenId
+    );
+
+    await addArticleTx.wait();
+
+    alert("Article added!");
+
+    await loadContent();
+  }
+
+  async function upvote(articleIndex) {
+    if (!window.ethereum) return;
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = await provider.getSigner();
+
+    const manftestoTokenContract = new ethers.Contract(
+      manftestotokenAddress,
+      manftestotokenAbi,
+      signer
+    );
+
+    const upvoteTx = await manftestoTokenContract.upvoteArticle(
+      articles[articleIndex].manifestoId,
+      articleIndex
+    );
+
+    await upvoteTx.wait();
+
+    setArticles((articles) =>
+      articles
+        .map((article) => {
+          if (articleIndex === article.index) {
+            return {
+              ...article,
+              articleInfo: {
+                ...article.articleInfo,
+                score: article.articleInfo.score + 1,
+              },
+            };
+          }
+
+          return article;
+        })
+        .sort((a, b) => {
+          if (a.articleInfo.score > b.articleInfo.score) {
+            return -1;
+          }
+
+          if (a.articleInfo.score < b.articleInfo.score) {
+            return 1;
+          }
+
+          return 0;
+        })
+    );
+  }
+
+  async function downvote(articleIndex) {
+    console.log(articleIndex);
+    if (!window.ethereum) return;
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = await provider.getSigner();
+
+    const manftestoTokenContract = new ethers.Contract(
+      manftestotokenAddress,
+      manftestotokenAbi,
+      signer
+    );
+
+    const downvoteTx = await manftestoTokenContract.downVote(
+      articles[articleIndex].manifestoId,
+      articleIndex
+    );
+
+    await downvoteTx.wait();
+
+    setArticles((articles) =>
+      articles
+        .map((article) => {
+          if (articleIndex === article.index) {
+            return {
+              ...article,
+              articleInfo: {
+                ...article.articleInfo,
+                score: article.articleInfo.score - 1,
+              },
+            };
+          }
+
+          return article;
+        })
+        .sort((a, b) => {
+          if (a.articleInfo.score > b.articleInfo.score) {
+            return -1;
+          }
+
+          if (a.articleInfo.score < b.articleInfo.score) {
+            return 1;
+          }
+
+          return 0;
+        })
+    );
+  }
+
   return (
-    <div className={styles.container}>
+    <div className="h-screen flex flex-col">
       <Head>
-        <title>Create Next App</title>
-        <meta name="description" content="Generated by create next app" />
+        <title>SpaghettETH MaNFTesto</title>
+        <meta name="description" content="SpaghettETH MaNFTesto" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
+      <header>
+        <div className="container mx-auto flex justify-end items-center py-8 px-4 sm:px-0">
+          {walletAddr ? (
+            <p>{walletAddr}</p>
+          ) : (
+            <Button onClick={connectWallet}>Connect wallet</Button>
+          )}
+        </div>
+      </header>
 
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h2>Documentation &rarr;</h2>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h2>Learn &rarr;</h2>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/canary/examples"
-            className={styles.card}
-          >
-            <h2>Examples &rarr;</h2>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h2>Deploy &rarr;</h2>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
+      <main className="flex-1 pt-8 overflow-hidden bg-zinc-100">
+        <div className="container mx-auto grid grid-cols-1 sm:grid-cols-2 items-center justify-center h-full px-4 sm:px-0">
+          <div className="flex flex-col items-center h-full">
+            <Image
+              alt="Spaghett-eth Logo"
+              src="https://spaghett-eth.com/images/SpethLogo.png"
+              width="547"
+              height="547"
+            />
+          </div>
+          <div className="flex flex-col gap-2 overflow-y-scroll h-full">
+            <div className="bg-white p-2 rounded-lg sticky top-0 shadow-lg">
+              <div className="bg-zinc-100 flex flex-col sm:flex gap-2 rounded p-2">
+                <textarea
+                  className=" min-h-full rounded-lg bg-transparent flex-1"
+                  placeholder="Your article here..."
+                  value={articleText}
+                  onChange={(e) => setArticleText(e.target.value)}
+                />
+                <div className="sm:self-end">
+                  <Button
+                    onClick={() =>
+                      articleText.trim() !== "" ? mintArticle() : null
+                    }
+                    disabled={articleText.trim() === ""}
+                  >
+                    Mint your article
+                  </Button>
+                </div>
+              </div>
+            </div>
+            {isLoading ? (
+              <p>Loading...</p>
+            ) : (
+              articles.map((article, i) => (
+                <Article
+                  article={article}
+                  onUpvote={() => upvote(article.index)}
+                  onDownvote={() => downvote(article.index)}
+                  key={i}
+                />
+              ))
+            )}
+          </div>
         </div>
       </main>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <span className={styles.logo}>
-            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
-          </span>
-        </a>
-      </footer>
     </div>
-  )
+  );
 }
+
+export default Home;
