@@ -34,7 +34,13 @@ function Home(props) {
     const signer = await provider.getSigner();
     const signerAddr = await signer.getAddress();
 
-    setWalletAddr(signerAddr);
+    const ensProvider = new ethers.providers.JsonRpcProvider(
+      "https://mainnet.infura.io/v3/0b60056fd3f84b6f8830243ac587e717"
+    );
+
+    const ensName = await ensProvider.lookupAddress(signerAddr);
+
+    setWalletAddr(ensName ? ensName : signerAddr);
 
     setIsLoading(true);
     const articleTokenContract = new ethers.Contract(
@@ -54,7 +60,9 @@ function Home(props) {
     let articleIndex = 0;
     for (const article of articleAPI) {
       let uri = await articleTokenContract.tokenURI(article.tokenId);
-      const author = await articleTokenContract.ownerOf(article.tokenId);
+      const authorAddr = await articleTokenContract.ownerOf(article.tokenId);
+      const ensName = await ensProvider.lookupAddress(signerAddr);
+      const author = ensName ? ensName : authorAddr;
 
       const content = await (
         await fetch(`https://ipfs.tapoon.house/ipfs/${uri}`)
