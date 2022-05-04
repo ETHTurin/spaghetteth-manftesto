@@ -61,7 +61,7 @@ function Home(props) {
     for (const article of articleAPI) {
       let uri = await articleTokenContract.tokenURI(article.tokenId);
       const authorAddr = await articleTokenContract.ownerOf(article.tokenId);
-      const ensName = await ensProvider.lookupAddress(signerAddr);
+      const ensName = await ensProvider.lookupAddress(authorAddr);
       const author = ensName ? ensName : authorAddr;
 
       const content = await (
