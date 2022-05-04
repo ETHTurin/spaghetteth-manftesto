@@ -258,9 +258,17 @@ function Home(props) {
       </Head>
 
       <header>
-        <div className="container mx-auto flex justify-end items-center py-8 px-4 sm:px-0">
+        <div className="container mx-auto flex justify-between sm:justify-end items-center py-2 sm:py-8 px-4 sm:px-0">
+          <div className="block sm:hidden">
+            <Image
+              alt="Spaghett-eth Logo"
+              src="https://spaghett-eth.com/images/SpethLogo.png"
+              width="64"
+              height="64"
+            />
+          </div>
           {walletAddr ? (
-            <p>{walletAddr}</p>
+            <p className="truncate sm:overflow-auto">{walletAddr}</p>
           ) : (
             <Button onClick={connectWallet}>Connect wallet</Button>
           )}
@@ -269,7 +277,7 @@ function Home(props) {
 
       <main className="flex-1 pt-8 overflow-hidden bg-zinc-100">
         <div className="container mx-auto grid grid-cols-1 sm:grid-cols-2 items-center justify-center h-full px-4 sm:px-0">
-          <div className="flex flex-col items-center h-full">
+          <div className="hidden sm:flex flex-col items-center h-full">
             <Image
               alt="Spaghett-eth Logo"
               src="https://spaghett-eth.com/images/SpethLogo.png"
