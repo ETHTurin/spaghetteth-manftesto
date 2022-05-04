@@ -7,6 +7,7 @@ export const providerOptions = {
   walletconnect: {
     package: WalletConnectProvider, // required
     options: {
+      infuraId: INFURA_ID,
       rpc: {
         100: "https://rpc.gnosischain.com/",
       },

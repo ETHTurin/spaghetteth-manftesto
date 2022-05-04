@@ -27,8 +27,9 @@ function Home(props) {
   let provider;
 
   const loadContent = async () => {
-    if (!window.ethereum) return;
-    provider = new ethers.providers.Web3Provider(window.ethereum);
+    const instance = await web3Modal.connect();
+
+    provider = new ethers.providers.Web3Provider(instance);
 
     const signer = await provider.getSigner();
     const signerAddr = await signer.getAddress();
@@ -104,8 +105,8 @@ function Home(props) {
   }
 
   async function mintArticle() {
-    if (!window.ethereum) return;
-    provider = new ethers.providers.Web3Provider(window.ethereum);
+    const instance = await web3Modal.connect();
+    provider = new ethers.providers.Web3Provider(instance);
 
     const signer = await provider.getSigner();
     const signerAddress = await signer.getAddress();
@@ -151,8 +152,10 @@ function Home(props) {
   }
 
   async function upvote(articleIndex) {
-    if (!window.ethereum) return;
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const instance = await web3Modal.connect();
+
+    provider = new ethers.providers.Web3Provider(instance);
+
     const signer = await provider.getSigner();
 
     const manftestoTokenContract = new ethers.Contract(
@@ -198,9 +201,10 @@ function Home(props) {
   }
 
   async function downvote(articleIndex) {
-    console.log(articleIndex);
-    if (!window.ethereum) return;
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const instance = await web3Modal.connect();
+
+    provider = new ethers.providers.Web3Provider(instance);
+
     const signer = await provider.getSigner();
 
     const manftestoTokenContract = new ethers.Contract(
