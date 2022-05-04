@@ -61,18 +61,18 @@ function Home(props) {
     for (const article of articleAPI) {
       let uri = await articleTokenContract.tokenURI(article.tokenId);
       const authorAddr = await articleTokenContract.ownerOf(article.tokenId);
-      const ensName = await ensProvider.lookupAddress(authorAddr);
-      const author = ensName ? ensName : authorAddr;
+      // const ensName = await ensProvider.lookupAddress(authorAddr);
+      // const author = ensName ? ensName : authorAddr;
 
-      const content = await (
-        await fetch(`https://ipfs.tapoon.house/ipfs/${uri}`)
-      ).json();
+      // const content = await (
+      //   await fetch(`https://ipfs.tapoon.house/ipfs/${uri}`)
+      // ).json();
 
       articleInfo.push({
         manifestoId,
         index: articleIndex,
-        content: content.name,
-        author,
+        content: uri,
+        author: authorAddr,
         articleInfo: {
           score: article.score.toNumber(),
           tokenId: article.tokenId.toString(),
