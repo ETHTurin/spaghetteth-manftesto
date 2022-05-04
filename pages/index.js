@@ -258,7 +258,7 @@ function Home(props) {
       </Head>
 
       <header>
-        <div className="container mx-auto flex justify-between sm:justify-end items-center py-2 sm:py-8 px-4 sm:px-0">
+        <div className="container mx-auto flex justify-between gap-4 sm:justify-end items-center py-2 sm:py-8 px-4 sm:px-0">
           <div className="block sm:hidden">
             <Image
               alt="Spaghett-eth Logo"
